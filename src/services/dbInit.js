@@ -4,10 +4,6 @@ const fs = require('fs');
 
 async function initializeDatabase() {
   console.log('🔄 Ma\'lumotlar bazasi tekshirilmoqda...');
-  
-  if (!process.env.DATABASE_URL) {
-    process.env.DATABASE_URL = 'file:./dev.db';
-  }
 
   const rootDir = path.resolve(__dirname, '../../');
   const projectDir = fs.existsSync(path.join(rootDir, 'prisma')) ? rootDir : process.cwd();
@@ -18,7 +14,7 @@ async function initializeDatabase() {
     execSync('npx prisma db push --skip-generate --accept-data-loss', {
       stdio: 'inherit',
       cwd: projectDir,
-      env: { ...process.env, DATABASE_URL: 'file:./dev.db' }
+      env: process.env
     });
     console.log('✅ Prisma jadvallari muvaffaqiyatli tayyorlandi!');
   } catch (err) {
@@ -38,7 +34,7 @@ async function initializeDatabase() {
         execSync('node prisma/seed.js', {
           stdio: 'inherit',
           cwd: projectDir,
-          env: { ...process.env, DATABASE_URL: 'file:./dev.db' }
+          env: process.env
         });
         console.log('✅ Dastlabki ma\'lumotlar (seed) muvaffaqiyatli yuklandi!');
       }
