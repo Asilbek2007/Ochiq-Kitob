@@ -8,6 +8,7 @@ const session = require('express-session');
 dotenv.config();
 
 const { initCronJobs } = require('./services/cronService');
+const { initializeDatabase } = require('./services/dbInit');
 
 // Routers
 const booksRouter = require('./routes/books');
@@ -20,6 +21,7 @@ const adminRouter = require('./routes/admin');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_SECRET_PATH = process.env.ADMIN_SECRET_PATH || 'kutubxona-boshqaruv';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'ochiqkitob2026';
 
 // Middlewares
 app.use(cors());
@@ -29,25 +31,21 @@ app.use(morgan('dev'));
 
 // Session middleware
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'ochiqkitob-secret',
+  secret: process.env.SESSION_SECRET || 'ochiqkitob-secret-2026',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // true if using HTTPS
+    secure: false,
     maxAge: 8 * 60 * 60 * 1000 // 8 soat
   }
 }));
 
-// Static public files — admin.html ga kirish BLOKLANGAN
+// Static public files
 app.use(express.static(path.join(__dirname, '../public'), {
-  // admin.html ni bevosita staticdan yashiramiz
-  index: false,
-  setHeaders: (res, filePath) => {
-    // admin.html ni static orqali bermaslik
-  }
+  index: false
 }));
 
-// Public static fayl berish (admin.html bundan mustasno)
+// Public static fayl berish
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
@@ -82,10 +80,8 @@ app.use('/api/admin', adminRouter);
 // Admin login sahifasi — maxfiy URL orqali kirish
 app.get(`/${ADMIN_SECRET_PATH}`, (req, res) => {
   if (req.session && req.session.isAdmin) {
-    // Allaqachon tizimga kirgan — admin panelga yo'naltirish
     res.sendFile(path.join(__dirname, '../public/panel.html'));
   } else {
-    // Login sahifasini ko'rsatish
     res.sendFile(path.join(__dirname, '../public/login.html'));
   }
 });
@@ -112,15 +108,23 @@ app.use((req, res) => {
   res.status(404).redirect('/');
 });
 
-// Start Cron background jobs
-initCronJobs();
+// Serverni ishga tushirish funksiyasi
+async function startServer() {
+  // 1. Bazani avtomatik tayyorlash
+  await initializeDatabase();
 
-// Start Server
-app.listen(PORT, () => {
-  console.log('====================================================');
-  console.log(`✅  OchiqKitob (OpenBook) tizimi ishga tushdi!`);
-  console.log(`🌐  Jamoat sahifasi: http://localhost:${PORT}`);
-  console.log(`🔒  Admin panel:     http://localhost:${PORT}/${ADMIN_SECRET_PATH}`);
-  console.log(`🔑  Parol: ${process.env.ADMIN_PASSWORD}`);
-  console.log('====================================================');
-});
+  // 2. Cron background jobs
+  initCronJobs();
+
+  // 3. Listen
+  app.listen(PORT, () => {
+    console.log('====================================================');
+    console.log(`✅  OchiqKitob (OpenBook) tizimi ishga tushdi!`);
+    console.log(`🌐  Jamoat sahifasi: http://localhost:${PORT}`);
+    console.log(`🔒  Admin panel:     http://localhost:${PORT}/${ADMIN_SECRET_PATH}`);
+    console.log(`🔑  Parol: ${ADMIN_PASSWORD}`);
+    console.log('====================================================');
+  });
+}
+
+startServer();
