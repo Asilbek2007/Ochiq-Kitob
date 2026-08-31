@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="50%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  
+  <!-- Background Rounded Shield -->
+  <rect width="64" height="64" rx="16" fill="url(#grad)" />
+  
+  <!-- Book Spine & Pages -->
+  <g filter="url(#shadow)" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Left Page -->
+    <path d="M14 46C18 43 26 43 32 46V20C26 17 18 17 14 20Z" fill="rgba(255, 255, 255, 0.95)" stroke="#ffffff"/>
+    <!-- Right Page -->
+    <path d="M50 46C46 43 38 43 32 46V20C38 17 46 17 50 20Z" fill="rgba(255, 255, 255, 0.95)" stroke="#ffffff"/>
+    <!-- Center Spine Bookmark -->
+    <path d="M32 18V32L36 28L40 32V18" fill="url(#gold)" stroke="none" />
+  </g>
+  
+  <!-- Small Star / Light Accent -->
+  <circle cx="50" cy="14" r="3" fill="#fbbf24" />
+</svg>

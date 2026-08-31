@@ -1,0 +1,31 @@
+# Og'ir va maxfiy fayllar — GitHub'ga yuklanmasin
+node_modules/
+.env
+
+# Database fayli (local)
+dev.db
+dev.db-journal
+*.db
+*.db-shm
+*.db-wal
+
+# Prisma generated
+prisma/generated/
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+
+# OS fayllar
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Build / Cache
+dist/
+.cache/
+.tmp/
+
+# Test fayllar
+test-bot.js

@@ -1,0 +1,105 @@
+// prisma/schema.prisma
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Book {
+  id              Int      @id @default(autoincrement())
+  title           String
+  author          String
+  category        String   @default("Badiiy adabiyot")
+  inventoryNo     String?  @unique
+  pageCount       Int?     @default(0)
+  totalCopies     Int      @default(3) // Jami nusxalar soni
+  readCount       Int      @default(0) // Jami o'qilganlik soni (Top 100 uchun)
+  weeklyReadCount Int      @default(0) // Haftalik o'qilganlik soni
+  description     String?
+  coverUrl        String?
+  status          String   @default("AVAILABLE") // "AVAILABLE" or "BORROWED"
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  borrows         Borrow[]
+  reviews         Review[]
+
+  @@index([status])
+  @@index([category])
+  @@index([title])
+  @@index([readCount])
+}
+
+model Student {
+  id        Int      @id @default(autoincrement())
+  firstName String
+  lastName  String
+  gender    String?  @default("female") // "male" or "female"
+  grade     String   // masalan: "3-A", "8-B", "10-A"
+  phone     String?
+  readCount Int      @default(0) // O'qigan kitoblari soni
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  borrows   Borrow[]
+  reviews   Review[]
+
+  @@index([grade])
+  @@index([phone])
+  @@index([readCount])
+}
+
+model Borrow {
+  id         Int       @id @default(autoincrement())
+  bookId     Int
+  studentId  Int
+  borrowDate DateTime  @default(now())
+  dueDate    DateTime
+  returnDate DateTime?
+  status     String    @default("ACTIVE") // "ACTIVE" or "RETURNED"
+  isFinished Boolean   @default(false)
+  notes      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  book       Book      @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  student    Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  review     Review?
+
+  @@index([status])
+  @@index([bookId])
+  @@index([studentId])
+}
+
+model Review {
+  id         Int      @id @default(autoincrement())
+  borrowId   Int?     @unique
+  bookId     Int
+  studentId  Int
+  rating     Int      @default(5) // 1 - 5
+  comment    String
+  isFeatured Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  borrow     Borrow?  @relation(fields: [borrowId], references: [id], onDelete: SetNull)
+  book       Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([bookId])
+  @@index([studentId])
+  @@index([isFeatured])
+}
+
+model Admin {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  name      String   @default("Kutubxonachi")
+  role      String   @default("ADMIN")
+  createdAt DateTime @default(now())
+}
