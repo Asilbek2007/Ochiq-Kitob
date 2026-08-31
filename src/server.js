@@ -21,7 +21,7 @@ const adminRouter = require('./routes/admin');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_SECRET_PATH = process.env.ADMIN_SECRET_PATH || 'kutubxona-boshqaruv';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'ochiqkitob2026';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Ilmamal03';
 
 // Middlewares
 app.use(cors());

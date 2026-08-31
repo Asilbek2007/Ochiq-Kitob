@@ -6,7 +6,7 @@ const ADMIN_SECRET_PATH = process.env.ADMIN_SECRET_PATH || 'kutubxona-boshqaruv'
 // Admin login
 router.post('/login', (req, res) => {
   const { password } = req.body;
-  const correctPassword = process.env.ADMIN_PASSWORD || 'ochiqkitob2026';
+  const correctPassword = process.env.ADMIN_PASSWORD || 'Ilmamal03';
 
   if (password === correctPassword) {
     req.session.isAdmin = true;
