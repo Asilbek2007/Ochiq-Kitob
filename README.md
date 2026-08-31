@@ -31,8 +31,8 @@
 
 ### 1. Repozitoriyni klonlash
 ```bash
-git clone https://github.com/USERNAME/ochiq-kitob.git
-cd ochiq-kitob
+git clone https://github.com/Asilbek2007/Ochiq-Kitob.git
+cd Ochiq-Kitob
 ```
 
 ### 2. Paketlarni o'rnatish
