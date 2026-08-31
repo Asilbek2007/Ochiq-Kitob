@@ -7,6 +7,10 @@ const session = require('express-session');
 
 dotenv.config();
 
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = 'file:./dev.db';
+}
+
 const { initCronJobs } = require('./services/cronService');
 const { initializeDatabase } = require('./services/dbInit');
 

@@ -1,35 +1,44 @@
 const { execSync } = require('child_process');
-const { PrismaClient } = require('@prisma/client');
 const path = require('path');
 const fs = require('fs');
 
-const prisma = new PrismaClient();
-
 async function initializeDatabase() {
   console.log('🔄 Ma\'lumotlar bazasi tekshirilmoqda...');
-  try {
-    // 1. Prisma jadvallarini avtomatik yaratish (agar yo'q bo'lsa)
-    try {
-      await prisma.book.count();
-      console.log('✅ Ma\'lumotlar bazasi jadvallari mavjud.');
-    } catch (tableError) {
-      console.log('⚠️ Jadvallar topilmadi. Prisma db push ishga tushirilmoqda...');
-      execSync('npx prisma db push --skip-generate', {
-        stdio: 'inherit',
-        cwd: path.join(__dirname, '../../')
-      });
-      console.log('✅ Prisma jadvallari muvaffaqiyatli yaratildi!');
-    }
+  
+  if (!process.env.DATABASE_URL) {
+    process.env.DATABASE_URL = 'file:./dev.db';
+  }
 
-    // 2. Kitoblar sonini tekshirish — agar bo'sh bo'lsa, seed ishga tushadi
+  const rootDir = path.resolve(__dirname, '../../');
+  const projectDir = fs.existsSync(path.join(rootDir, 'prisma')) ? rootDir : process.cwd();
+
+  // 1. Prisma jadvallarini avtomatik yaratish/yangilash
+  try {
+    console.log('⚙️ Prisma db push orqali jadvallarni sinxronizatsiya qilish...');
+    execSync('npx prisma db push --skip-generate --accept-data-loss', {
+      stdio: 'inherit',
+      cwd: projectDir,
+      env: { ...process.env, DATABASE_URL: 'file:./dev.db' }
+    });
+    console.log('✅ Prisma jadvallari muvaffaqiyatli tayyorlandi!');
+  } catch (err) {
+    console.error('⚠️ db push xatosi (davom etilmoqda):', err.message);
+  }
+
+  // 2. PrismaClient bilan tekshirish va seed qilish
+  try {
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+
     const bookCount = await prisma.book.count();
     if (bookCount === 0) {
       console.log('🌱 Baza bo\'sh ekan. Dastlabki 100 ta sara kitob va o\'quvchilar yuklanmoqda (seed)...');
-      const seedScriptPath = path.join(__dirname, '../../prisma/seed.js');
+      const seedScriptPath = path.join(projectDir, 'prisma/seed.js');
       if (fs.existsSync(seedScriptPath)) {
         execSync('node prisma/seed.js', {
           stdio: 'inherit',
-          cwd: path.join(__dirname, '../../')
+          cwd: projectDir,
+          env: { ...process.env, DATABASE_URL: 'file:./dev.db' }
         });
         console.log('✅ Dastlabki ma\'lumotlar (seed) muvaffaqiyatli yuklandi!');
       }
@@ -37,7 +46,7 @@ async function initializeDatabase() {
       console.log(`📚 Bazada hozirda ${bookCount} ta kitob mavjud.`);
     }
   } catch (err) {
-    console.error('❌ Ma\'lumotlar bazasini initsializatsiya qilishda xatolik:', err.message);
+    console.error('❌ Ma\'lumotlar bazasi tekshiruvida xatolik:', err.message);
   }
 }
 
