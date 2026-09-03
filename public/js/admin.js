@@ -82,11 +82,17 @@ async function loadDashboardData() {
     const result = await res.json();
 
     if (result.success) {
-      const { counters } = result.data;
-      document.getElementById('dashStudents').textContent = counters.totalStudents.toLocaleString();
-      document.getElementById('dashActive').textContent = counters.activeBorrows.toLocaleString();
-      document.getElementById('dashFinished').textContent = counters.totalBorrows.toLocaleString();
-      document.getElementById('dashAvailable').textContent = counters.totalBooks.toLocaleString();
+      const elStudents = document.getElementById('dashStudents');
+      const elActive = document.getElementById('dashActive');
+      const elFinished = document.getElementById('dashFinished');
+      const elAvailable = document.getElementById('dashAvailable');
+      const elBooks = document.getElementById('dashBooks');
+
+      if (elStudents) elStudents.textContent = (counters.totalStudents || 0).toLocaleString();
+      if (elActive) elActive.textContent = (counters.activeBorrows || 0).toLocaleString();
+      if (elFinished) elFinished.textContent = (counters.totalBorrows || 0).toLocaleString();
+      if (elAvailable) elAvailable.textContent = (counters.totalBooks || 0).toLocaleString();
+      if (elBooks) elBooks.textContent = (counters.totalBooks || 0).toLocaleString();
     }
 
     const borrowsRes = await fetch('/api/borrows?status=ACTIVE&limit=5');
