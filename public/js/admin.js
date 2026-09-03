@@ -35,8 +35,27 @@ function setupSidebarNav() {
   });
 }
 
+window.toggleMobileAdminMenu = function() {
+  const sidebar = document.getElementById('adminSidebar');
+  const overlay = document.getElementById('mobileMenuOverlay');
+  if (sidebar && overlay) {
+    sidebar.classList.toggle('-translate-x-full');
+    overlay.classList.toggle('hidden');
+  }
+};
+
+window.closeMobileAdminMenu = function() {
+  const sidebar = document.getElementById('adminSidebar');
+  const overlay = document.getElementById('mobileMenuOverlay');
+  if (sidebar && overlay) {
+    sidebar.classList.add('-translate-x-full');
+    overlay.classList.add('hidden');
+  }
+};
+
 function switchTab(tabName) {
   currentActiveTab = tabName;
+  closeMobileAdminMenu();
 
   document.querySelectorAll('.sidebar-btn').forEach(btn => {
     if (btn.dataset.tab === tabName) {
