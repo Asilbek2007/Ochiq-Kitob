@@ -1,34 +1,36 @@
 const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const { PrismaClient } = require('@prisma/client');
 
 async function initializeDatabase() {
-  console.log('🔄 Ma\'lumotlar bazasi tekshirilmoqda...');
-
+  const prisma = new PrismaClient();
   const rootDir = path.resolve(__dirname, '../../');
   const projectDir = fs.existsSync(path.join(rootDir, 'prisma')) ? rootDir : process.cwd();
 
-  // 1. Prisma jadvallarini avtomatik yaratish/yangilash
   try {
-    console.log('⚙️ Prisma db push orqali jadvallarni sinxronizatsiya qilish...');
-    execSync('npx prisma db push --skip-generate --accept-data-loss', {
-      stdio: 'inherit',
-      cwd: projectDir,
-      env: process.env
-    });
-    console.log('✅ Prisma jadvallari muvaffaqiyatli tayyorlandi!');
+    // 1. Admin va jadvallarni tekshirish
+    await prisma.admin.count();
+    console.log('✅ Ma\'lumotlar bazasi jadvallari va ulanish tayyor.');
   } catch (err) {
-    console.error('⚠️ db push xatosi (davom etilmoqda):', err.message);
+    console.log('⚙️ Jadvallar topilmadi. Prisma db push orqali sinxronizatsiya qilinmoqda...');
+    try {
+      execSync('npx prisma db push --skip-generate --accept-data-loss', {
+        stdio: 'inherit',
+        cwd: projectDir,
+        env: process.env
+      });
+      console.log('✅ Prisma jadvallari muvaffaqiyatli yaratildi!');
+    } catch (pushErr) {
+      console.error('⚠️ db push xatoligi:', pushErr.message);
+    }
   }
 
-  // 2. PrismaClient bilan tekshirish va seed qilish
+  // 2. Admin borligini tekshirish (yo'q bo'lsa, seed qilib faqat Admin yaratadi)
   try {
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
-
-    const bookCount = await prisma.book.count();
-    if (bookCount === 0) {
-      console.log('🌱 Baza bo\'sh ekan. Dastlabki 100 ta sara kitob va o\'quvchilar yuklanmoqda (seed)...');
+    const adminCount = await prisma.admin.count();
+    if (adminCount === 0) {
+      console.log('👤 Admin akkaunt yaratilmoqda...');
       const seedScriptPath = path.join(projectDir, 'prisma/seed.js');
       if (fs.existsSync(seedScriptPath)) {
         execSync('node prisma/seed.js', {
@@ -36,13 +38,16 @@ async function initializeDatabase() {
           cwd: projectDir,
           env: process.env
         });
-        console.log('✅ Dastlabki ma\'lumotlar (seed) muvaffaqiyatli yuklandi!');
+        console.log('✅ Admin akkaunt tayyorlandi!');
       }
     } else {
-      console.log(`📚 Bazada hozirda ${bookCount} ta kitob mavjud.`);
+      const bookCount = await prisma.book.count();
+      console.log(`📚 Bazada hozirda ${bookCount} ta kitob va ${adminCount} ta admin mavjud.`);
     }
   } catch (err) {
-    console.error('❌ Ma\'lumotlar bazasi tekshiruvida xatolik:', err.message);
+    console.error('❌ DB tekshirishda xatolik:', err.message);
+  } finally {
+    await prisma.$disconnect();
   }
 }
 

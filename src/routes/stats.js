@@ -3,52 +3,70 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// 1. Jonli asosiy statistika va hisoblagichlar
+// 1. Jonli dinamik statistika va hisoblagichlar (Bazadagi haqiqiy ma'lumotlar bo'yicha)
 router.get('/', async (req, res) => {
   try {
+    const now = new Date();
+    const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
     const [
       actualStudents,
       actualBooks,
-      actualActiveBorrows,
-      actualFinishedBorrows,
+      bookCopiesSum,
+      totalBorrows,
+      activeBorrows,
+      overdueBorrows,
       maleStudents,
-      femaleStudents
+      femaleStudents,
+      monthBorrows,
+      weekBorrows,
+      last24hBorrows,
+      firstBorrowRecord
     ] = await Promise.all([
       prisma.student.count(),
       prisma.book.count(),
+      prisma.book.aggregate({ _sum: { totalCopies: true } }),
+      prisma.borrow.count(),
       prisma.borrow.count({ where: { status: 'ACTIVE' } }),
-      prisma.borrow.count({ where: { status: 'RETURNED', isFinished: true } }),
+      prisma.borrow.count({ where: { status: 'ACTIVE', dueDate: { lt: now } } }),
       prisma.student.count({ where: { gender: 'male' } }),
-      prisma.student.count({ where: { gender: 'female' } })
+      prisma.student.count({ where: { gender: 'female' } }),
+      prisma.borrow.count({ where: { borrowDate: { gte: last30Days } } }),
+      prisma.borrow.count({ where: { borrowDate: { gte: last7Days } } }),
+      prisma.borrow.count({ where: { borrowDate: { gte: last24h } } }),
+      prisma.borrow.findFirst({ orderBy: { borrowDate: 'asc' } })
     ]);
 
-    // Rasmiy umumiy ko'rsatkichlar (20.04.2021 dan boshlab)
-    const benchmarkStats = {
-      startDate: '20.04.2021',
-      totalBooks: 8258,
-      totalStudents: 12023,
-      totalBorrows: 91752,
-      maleStudents: 3133,
-      femaleStudents: 8839,
-      activeBorrows: 2062,
-      overdueBorrows: 869,
-      dailyAvgBorrows: 77,
-      monthBorrows: 2008,
-      weekBorrows: 467,
-      last24hBorrows: 78
-    };
+    // Kunlik o'rtacha ijaralar soni (real dinamik hisob-kitob)
+    let dailyAvgBorrows = 0;
+    if (totalBorrows > 0) {
+      if (firstBorrowRecord) {
+        const daysDiff = Math.max(1, Math.ceil((now.getTime() - new Date(firstBorrowRecord.borrowDate).getTime()) / (1000 * 3600 * 24)));
+        dailyAvgBorrows = Math.round(totalBorrows / daysDiff);
+      } else {
+        dailyAvgBorrows = Math.round(monthBorrows / 30);
+      }
+    }
 
-    // Dinamik bazadagi ma'lumotlar bilan birlashtirish
     const counters = {
-      ...benchmarkStats,
-      dbTotalBooks: actualBooks,
-      dbTotalStudents: actualStudents,
-      dbActiveBorrows: actualActiveBorrows,
-      dbFinishedBorrows: actualFinishedBorrows
+      totalBooks: bookCopiesSum._sum.totalCopies || actualBooks,
+      totalStudents: actualStudents,
+      totalBorrows: totalBorrows,
+      activeBorrows: activeBorrows,
+      overdueBorrows: overdueBorrows,
+      maleStudents: maleStudents,
+      femaleStudents: femaleStudents,
+      dailyAvgBorrows: dailyAvgBorrows,
+      monthBorrows: monthBorrows,
+      weekBorrows: weekBorrows,
+      last24hBorrows: last24hBorrows
     };
 
-    // Top 5 eng sara o'quvchilar
+    // Top 5 eng faol o'quvchilar
     const topStudents = await prisma.student.findMany({
+      where: { readCount: { gt: 0 } },
       orderBy: { readCount: 'desc' },
       take: 5
     });
@@ -64,8 +82,8 @@ router.get('/', async (req, res) => {
       }
     });
 
-    // Oylik olingan va qaytarilgan kitoblar grafigi ma'lumotlari (Oxirgi 30 kun)
-    const chartData = generateMonthlyChartData();
+    // 30 kunlik haqiqiy grafik ma'lumotlari
+    const chartData = await generateRealMonthlyChartData();
 
     res.json({
       success: true,
@@ -116,6 +134,7 @@ router.get('/top-books', async (req, res) => {
 router.get('/top-readers', async (req, res) => {
   try {
     const readers = await prisma.student.findMany({
+      where: { readCount: { gt: 0 } },
       orderBy: { readCount: 'desc' },
       take: 30
     });
@@ -141,24 +160,51 @@ router.get('/weekly-top', async (req, res) => {
   }
 });
 
-// Helper: 30 kunlik olingan va qaytarilgan kitoblar grafigi ma'lumotlari
-function generateMonthlyChartData() {
+// Helper: 30 kunlik real ijaralar va qaytarishlar grafigi (1 ta so'rovda tezkor)
+async function generateRealMonthlyChartData() {
   const labels = [];
   const borrowedData = [];
   const returnedData = [];
 
   const now = new Date();
+  const day30Ago = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29, 0, 0, 0, 0);
+
+  // Oxirgi 30 kunlik barcha ijaralarni 1 marta so'rab olish
+  const borrows = await prisma.borrow.findMany({
+    where: {
+      OR: [
+        { borrowDate: { gte: day30Ago } },
+        { returnDate: { gte: day30Ago } }
+      ]
+    },
+    select: {
+      borrowDate: true,
+      returnDate: true,
+      status: true
+    }
+  });
+
   for (let i = 29; i >= 0; i--) {
-    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-    const label = `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, 0, 0, 0, 0);
+    const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, 23, 59, 59, 999);
+
+    const label = `${dayStart.getDate()}.${String(dayStart.getMonth() + 1).padStart(2, '0')}`;
     labels.push(label);
 
-    // Kunlik o'rtacha 65-90 oralig'ida real ko'rinish
-    const base = 70 + Math.floor(Math.sin(i / 3) * 15 + Math.random() * 12);
-    const retBase = base - 3 + Math.floor(Math.random() * 8);
+    let bCount = 0;
+    let rCount = 0;
 
-    borrowedData.push(base);
-    returnedData.push(retBase);
+    for (const b of borrows) {
+      if (b.borrowDate && b.borrowDate >= dayStart && b.borrowDate <= dayEnd) {
+        bCount++;
+      }
+      if (b.status === 'RETURNED' && b.returnDate && b.returnDate >= dayStart && b.returnDate <= dayEnd) {
+        rCount++;
+      }
+    }
+
+    borrowedData.push(bCount);
+    returnedData.push(rCount);
   }
 
   return {
@@ -167,7 +213,7 @@ function generateMonthlyChartData() {
       {
         label: "Olingan kitoblar (Ijara)",
         data: borrowedData,
-        borderColor: '#059669', // Emerald 600
+        borderColor: '#059669',
         backgroundColor: 'rgba(5, 150, 105, 0.12)',
         fill: true,
         tension: 0.4
@@ -175,7 +221,7 @@ function generateMonthlyChartData() {
       {
         label: "Qaytarilgan kitoblar",
         data: returnedData,
-        borderColor: '#3b82f6', // Blue 500
+        borderColor: '#3b82f6',
         backgroundColor: 'rgba(59, 130, 246, 0.10)',
         fill: true,
         tension: 0.4

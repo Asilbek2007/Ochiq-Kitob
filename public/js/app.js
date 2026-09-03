@@ -119,11 +119,16 @@ async function loadStats() {
       animateFormattedNumber('statTotalBorrows', counters.totalBorrows);
       animateFormattedNumber('statActive', counters.activeBorrows);
 
+      const subEl = document.getElementById('statStudentsSub');
+      if (subEl) {
+        subEl.textContent = `👨 ${(counters.maleStudents || 0).toLocaleString()} | 👩 ${(counters.femaleStudents || 0).toLocaleString()}`;
+      }
+
       // Benchmarks
-      document.getElementById('statDailyAvg').textContent = `${counters.dailyAvgBorrows} ta`;
-      document.getElementById('statMonth').textContent = `${counters.monthBorrows.toLocaleString()} ta`;
-      document.getElementById('statWeek').textContent = `${counters.weekBorrows.toLocaleString()} ta`;
-      document.getElementById('stat24h').textContent = `${counters.last24hBorrows} ta`;
+      document.getElementById('statDailyAvg').textContent = `${counters.dailyAvgBorrows || 0} ta`;
+      document.getElementById('statMonth').textContent = `${(counters.monthBorrows || 0).toLocaleString()} ta`;
+      document.getElementById('statWeek').textContent = `${(counters.weekBorrows || 0).toLocaleString()} ta`;
+      document.getElementById('stat24h').textContent = `${counters.last24hBorrows || 0} ta`;
 
       renderTopStudents(topStudents);
       renderFeaturedReviews(featuredReviews);
