@@ -2,12 +2,12 @@ const cron = require('node-cron');
 const telegramService = require('./telegramService');
 
 async function initCronJobs() {
-  // Bot tokenini tekshirish
+  // Bot tokenini tekshirish va bot pollingni ishga tushirish
   await telegramService.initBot();
 
-  // Har kuni Toshkent vaqti bilan ertalab soat 08:00 da
-  cron.schedule('0 8 * * *', async () => {
-    console.log('⏰ [CRON 08:00] Kunlik Telegram hisobotini yuborish...');
+  // Har kuni Toshkent vaqti bilan kechki soat 23:00 da (11:00 PM)
+  cron.schedule('0 23 * * *', async () => {
+    console.log('⏰ [CRON 23:00] Kunlik Telegram hisobotini yuborish...');
     try {
       const result = await telegramService.sendReportToChannel();
       if (result.success) {
@@ -22,7 +22,7 @@ async function initCronJobs() {
     timezone: 'Asia/Tashkent'
   });
 
-  console.log('⏳ Kunlik hisobot Cron faollashtirildi (Har kuni 08:00 — Toshkent vaqti).');
+  console.log('⏳ Kunlik hisobot Cron faollashtirildi (Har kuni 23:00 — Toshkent vaqti).');
 }
 
 module.exports = { initCronJobs };
