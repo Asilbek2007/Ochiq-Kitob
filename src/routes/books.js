@@ -3,6 +3,58 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
+
+// Uploads papkasini tayyorlash
+const uploadsDir = path.join(__dirname, '../../public/uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Multer saqlash sozlamasi
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadsDir);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname) || '.png';
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, `book-${uniqueSuffix}${ext}`);
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: function (req, file, cb) {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Faqat rasm fayllari (JPG, PNG, WEBP, GIF, SVG) ruxsat etiladi!'));
+    }
+  }
+});
+
+// Rasm yuklash API (POST /api/books/upload)
+router.post('/upload', (req, res) => {
+  upload.single('coverImage')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, error: err.message || 'Fayl yuklashda xatolik!' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'Rasm fayli tanlanmadi!' });
+    }
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.json({
+      success: true,
+      message: 'Rasm muvaffaqiyatli yuklandi!',
+      url: fileUrl
+    });
+  });
+});
+
 // 1. Barcha kitoblarni olish (Nusxalar hisobi, qidiruv va filtrlash bilan)
 router.get('/', async (req, res) => {
   try {

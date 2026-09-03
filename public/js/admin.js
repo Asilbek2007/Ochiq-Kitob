@@ -878,11 +878,76 @@ window.closeReturnModal = function() {
   document.getElementById('returnModal').classList.add('hidden');
 };
 
+window.handleCoverFileUpload = async function(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const statusEl = document.getElementById('uploadStatusText');
+  if (statusEl) {
+    statusEl.className = 'text-xs font-semibold text-amber-600';
+    statusEl.textContent = '⏳ Yuklanmoqda...';
+  }
+
+  const formData = new FormData();
+  formData.append('coverImage', file);
+
+  try {
+    const res = await fetch('/api/books/upload', {
+      method: 'POST',
+      body: formData
+    });
+    const result = await res.json();
+
+    if (result.success && result.url) {
+      document.getElementById('bookFormCoverUrl').value = result.url;
+      updateCoverPreview(result.url);
+      if (statusEl) {
+        statusEl.className = 'text-xs font-semibold text-emerald-600';
+        statusEl.textContent = '✅ Rasm yuklandi!';
+      }
+      setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
+    } else {
+      alert('❌ Fayl yuklashda xatolik: ' + (result.error || 'Noma\'lum xatolik'));
+      if (statusEl) {
+        statusEl.className = 'text-xs font-semibold text-red-600';
+        statusEl.textContent = '❌ Xatolik';
+      }
+    }
+  } catch (err) {
+    alert('❌ Fayl yuklashda xatolik: ' + err.message);
+    if (statusEl) {
+      statusEl.className = 'text-xs font-semibold text-red-600';
+      statusEl.textContent = '❌ Xatolik';
+    }
+  }
+};
+
+window.updateCoverPreview = function(url) {
+  const container = document.getElementById('coverPreviewContainer');
+  const img = document.getElementById('coverPreviewImg');
+  const pathText = document.getElementById('coverPreviewPath');
+
+  if (!container || !img || !pathText) return;
+
+  if (url && url.trim() !== '') {
+    img.src = url.trim();
+    pathText.textContent = url.trim();
+    container.classList.remove('hidden');
+  } else {
+    container.classList.add('hidden');
+    img.src = '';
+    pathText.textContent = '';
+  }
+};
+
 window.openAddBookModal = function() {
   document.getElementById('bookFormId').value = '';
   document.getElementById('bookFormModalTitle').textContent = 'Yangi Kitob Qo\'shish';
   document.getElementById('bookModalForm').reset();
   document.getElementById('bookFormTotalCopies').value = '4';
+  const statusEl = document.getElementById('uploadStatusText');
+  if (statusEl) statusEl.textContent = '';
+  updateCoverPreview('');
   document.getElementById('bookFormModal').classList.remove('hidden');
   if (window.lucide) lucide.createIcons();
 };
@@ -901,6 +966,10 @@ window.openEditBookModal = function(id) {
   document.getElementById('bookFormTotalCopies').value = book.totalCopies || 4;
   document.getElementById('bookFormCoverUrl').value = book.coverUrl || '';
   document.getElementById('bookFormDescription').value = book.description || '';
+
+  const statusEl = document.getElementById('uploadStatusText');
+  if (statusEl) statusEl.textContent = '';
+  updateCoverPreview(book.coverUrl || '');
 
   document.getElementById('bookFormModal').classList.remove('hidden');
   if (window.lucide) lucide.createIcons();
